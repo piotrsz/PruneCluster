@@ -37,6 +37,8 @@ namespace PruneCluster {
 	// Number.MAX_SAFE_INTEGER
 	var maxHashCodeValue = Math.pow(2, 53) - 1;
 
+	const MAX_CATEGORIES = 8;
+
 	export class Marker extends ClusterObject {
 
 		// The category of the Marker, ideally a number between 0 and 7
@@ -112,8 +114,8 @@ namespace PruneCluster {
 		constructor(marker?: Marker) {
 			super();
 
-			// Create a stats table optimized for categories between 0 and 7
-			this.stats = [0, 0, 0, 0, 0, 0, 0, 0];
+			// Create a stats table optimized for categories between 0 and MAX_CATEGORIES
+			this.stats = Array.apply(null, new Array(MAX_CATEGORIES)).map(() => 0);
 			this.data = {};
 
 
@@ -138,7 +140,9 @@ namespace PruneCluster {
 			this.population = 1;
 
 			if (marker.category !== undefined) {
-				this.stats[marker.category] = 1;
+				for (let index = 0; index < 8; ++index)
+					if (marker.category & (1 << index))
+						this.stats[index] = 1;
 			}
 
 			this.totalWeight = marker.weight;
@@ -189,7 +193,9 @@ namespace PruneCluster {
 
 			// Update the statistics if needed
 			if (marker.category !== undefined) {
-				this.stats[marker.category] = (this.stats[marker.category] + 1) || 1;
+				for (let index = 0; index < 8; ++index)
+					if (marker.category & (1 << index))
+						this.stats[index] = (this.stats[index] + 1) || 1;
 			}
 		}
 
@@ -198,7 +204,7 @@ namespace PruneCluster {
 			this.lastMarker = undefined;
 			this.population = 0;
 			this.totalWeight = 0;
-			this.stats = [0, 0, 0, 0, 0, 0, 0, 0];
+			this.stats = Array.apply(null, new Array(MAX_CATEGORIES)).map(() => 0);
 
 			if (Cluster.ENABLE_MARKERS_LIST) {
 				this._clusterMarkers = [];
@@ -264,15 +270,8 @@ namespace PruneCluster {
 			this.bounds.maxLng = Math.max(this.bounds.maxLng, newCluster.bounds.maxLng);
 
 			// Merge the statistics
-			for (var category in newCluster.stats) {
-				if (newCluster.stats.hasOwnProperty(category)) {
-					if (this.stats.hasOwnProperty(category)) {
-						this.stats[category] += newCluster.stats[category];
-					} else {
-						this.stats[category] = newCluster.stats[category];
-					}
-				}
-			}
+			for (let index = 0; index < 8; ++index)
+				this.stats[index] += newCluster.stats[index];
 
 			// Merge the clusters lists
 			if (Cluster.ENABLE_MARKERS_LIST) {
